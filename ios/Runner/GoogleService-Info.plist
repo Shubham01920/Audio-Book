@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyAN8qoJGY3Xl0ZhZpzJr99fY5YdHDRcCDw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>486578984214</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.audiobooks</string>
+	<key>PROJECT_ID</key>
+	<string>audiobooks-b7cf9</string>
+	<key>STORAGE_BUCKET</key>
+	<string>audiobooks-b7cf9.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:486578984214:ios:4da64335f7e14c0d38ec37</string>
+	<key>CLIENT_ID</key>
+	<string>486578984214-gmmmnrb9g5n57r9qjkskp52q94pjuhvu.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.486578984214-gmmmnrb9g5n57r9qjkskp52q94pjuhvu</string>
+</dict>
+</plist>

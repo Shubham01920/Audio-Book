@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "486578984214",
+    "project_id": "audiobooks-b7cf9",
+    "storage_bucket": "audiobooks-b7cf9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:486578984214:android:19d9dc895485f1c938ec37",
+        "android_client_info": {
+          "package_name": "com.example.audiobooks"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOansvXF63CByBg8sc5kcHAM5YCR1AlpY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
