@@ -30,6 +30,13 @@ class AppUser {
   final String? phoneNumber;
   final DateTime? createdAt;
   final String? authProvider; // email, google, apple
+  final bool isAdmin; // Admin role - set manually in Firestore
+
+  // Premium & Coins System
+  final bool isPremium; // Subscription status
+  final int coins; // User's coin balance
+  final List<String> unlockedEpisodes; // Episode IDs unlocked with coins
+  final DateTime? premiumExpiry; // Subscription end date
 
   const AppUser({
     required this.uid,
@@ -41,6 +48,11 @@ class AppUser {
     this.phoneNumber,
     this.createdAt,
     this.authProvider,
+    this.isAdmin = false,
+    this.isPremium = false,
+    this.coins = 0,
+    this.unlockedEpisodes = const [],
+    this.premiumExpiry,
   });
 
   factory AppUser.fromFirebaseUser(
@@ -59,6 +71,14 @@ class AppUser {
           ? DateTime.parse(userData!['createdAt'])
           : null,
       authProvider: userData?['authProvider'] ?? _getProvider(user),
+      isAdmin: userData?['isAdmin'] ?? false,
+      // Premium & Coins
+      isPremium: userData?['isPremium'] ?? false,
+      coins: userData?['coins'] ?? 0,
+      unlockedEpisodes: List<String>.from(userData?['unlockedEpisodes'] ?? []),
+      premiumExpiry: userData?['premiumExpiry'] != null
+          ? DateTime.parse(userData!['premiumExpiry'])
+          : null,
     );
   }
 
@@ -83,7 +103,24 @@ class AppUser {
       'phoneNumber': phoneNumber,
       'createdAt': createdAt?.toIso8601String(),
       'authProvider': authProvider,
+      'isAdmin': isAdmin,
+      'isPremium': isPremium,
+      'coins': coins,
+      'unlockedEpisodes': unlockedEpisodes,
+      'premiumExpiry': premiumExpiry?.toIso8601String(),
     };
+  }
+
+  /// Check if user can access a locked episode
+  bool canAccessEpisode(String episodeId) {
+    return isPremium || unlockedEpisodes.contains(episodeId);
+  }
+
+  /// Check if premium subscription is active
+  bool get hasPremiumAccess {
+    if (!isPremium) return false;
+    if (premiumExpiry == null) return true;
+    return premiumExpiry!.isAfter(DateTime.now());
   }
 }
 

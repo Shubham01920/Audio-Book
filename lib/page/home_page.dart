@@ -6,10 +6,12 @@ import '../models/book_model.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../features/player/provider/player_provider.dart';
-import '../features/player/widgets/mini_player.dart';
 import '../repositories/book_repository.dart';
 import 'book_details_page.dart';
 import 'profile_screen.dart';
+import 'search_screen.dart';
+import '../presentation/screens/admin/admin_dashboard.dart';
+import '../services/auth_service.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -19,61 +21,39 @@ class HomeScreen extends StatelessWidget {
     final bookRepository = context.read<BookRepository>();
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       appBar: _buildAppBar(context),
-      body: Stack(
-        children: [
-          // Book grid - using repository stream
-          StreamBuilder<List<Book>>(
-            stream: bookRepository.getBooksStream(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    "Error: ${snapshot.error}",
-                    style: TextStyle(color: AppColors.error),
-                  ),
-                );
-              }
+      body: StreamBuilder<List<Book>>(
+        stream: bookRepository.getBooksStream(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                "Error: ${snapshot.error}",
+                style: TextStyle(color: AppColors.error),
+              ),
+            );
+          }
 
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
 
-              final books = snapshot.data ?? [];
+          final books = snapshot.data ?? [];
 
-              if (books.isEmpty) {
-                return _buildEmptyState();
-              }
+          if (books.isEmpty) {
+            return _buildEmptyState(context);
+          }
 
-              return _buildBookGrid(context, books);
-            },
-          ),
-
-          // Mini player at bottom
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Consumer<PlayerProvider>(
-              builder: (context, playerProvider, child) {
-                if (!playerProvider.state.hasContent) {
-                  return const SizedBox.shrink();
-                }
-                return const MiniPlayer();
-              },
-            ),
-          ),
-        ],
+          return _buildBookGrid(context, books);
+        },
       ),
     );
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: AppColors.backgroundDark,
       elevation: 0,
       title: Row(
         children: [
@@ -88,24 +68,47 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             'Audiobooks',
-            style: AppTypography.headlineSmall.copyWith(
-              color: AppColors.textPrimaryDark,
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.search, color: AppColors.textPrimaryDark),
+          icon: Icon(Icons.search, color: Theme.of(context).iconTheme.color),
           onPressed: () {
-            _showSearchDialog(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            );
+          },
+        ),
+        // Admin Panel Access - Only visible to admins
+        Consumer<AuthService>(
+          builder: (context, authService, child) {
+            final user = authService.currentUser;
+            if (user != null && user.isAdmin) {
+              return IconButton(
+                icon: Icon(
+                  Icons.admin_panel_settings,
+                  color: Theme.of(context).iconTheme.color,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AdminDashboard()),
+                  );
+                },
+              );
+            }
+            return const SizedBox.shrink(); // Hide for non-admins
           },
         ),
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.person_outline,
-            color: AppColors.textPrimaryDark,
+            color: Theme.of(context).iconTheme.color,
           ),
           onPressed: () {
             Navigator.push(
@@ -118,16 +121,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _showSearchDialog(BuildContext context) {
-    showSearch(
-      context: context,
-      delegate: BookSearchDelegate(
-        bookRepository: context.read<BookRepository>(),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -135,20 +129,26 @@ class HomeScreen extends StatelessWidget {
           Icon(
             Icons.library_books_outlined,
             size: 80,
-            color: AppColors.textTertiaryDark,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             'No Books Available',
-            style: AppTypography.titleLarge.copyWith(
-              color: AppColors.textSecondaryDark,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Check back later for new titles',
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textTertiaryDark,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],
@@ -195,10 +195,7 @@ class BookSearchDelegate extends SearchDelegate<Book?> {
   @override
   ThemeData appBarTheme(BuildContext context) {
     return Theme.of(context).copyWith(
-      appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.backgroundDark,
-        elevation: 0,
-      ),
+      appBarTheme: AppBarTheme(elevation: 0),
       inputDecorationTheme: InputDecorationTheme(
         hintStyle: TextStyle(color: AppColors.textTertiaryDark),
       ),
@@ -295,7 +292,9 @@ class BookSearchDelegate extends SearchDelegate<Book?> {
               ),
               title: Text(
                 book.title,
-                style: TextStyle(color: AppColors.textPrimaryDark),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
                 book.author,
@@ -368,7 +367,7 @@ class _BookCard extends StatelessWidget {
                     ),
                     child: CachedNetworkImage(
                       imageUrl: book.coverUrl,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.fitWidth,
                       placeholder: (context, url) => Container(
                         color: AppColors.elevatedDark,
                         child: const Center(
@@ -396,19 +395,23 @@ class _BookCard extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       book.title,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.titleSmall.copyWith(
-                        color: AppColors.textPrimaryDark,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       book.author,
                       maxLines: 1,
@@ -417,33 +420,19 @@ class _BookCard extends StatelessWidget {
                         color: AppColors.textSecondaryDark,
                       ),
                     ),
-                    const Spacer(),
-
                     // Progress indicator (if started)
                     if (book.progress > 0) ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: book.progress,
-                                minHeight: 4,
-                                backgroundColor: AppColors.progressInactive,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppColors.primary,
-                                ),
-                              ),
-                            ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: book.progress,
+                          minHeight: 3,
+                          backgroundColor: AppColors.progressInactive,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            book.progressPercentage,
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.textTertiaryDark,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ],

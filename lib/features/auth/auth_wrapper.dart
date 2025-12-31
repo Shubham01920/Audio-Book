@@ -4,7 +4,7 @@ import '../../services/auth_service.dart';
 import '../auth/screens/login_screen.dart';
 import '../auth/screens/verify_email_screen.dart';
 import '../auth/screens/two_factor_screen.dart';
-import '../../page/home_page.dart';
+import '../../page/main_navigation_page.dart';
 
 /// Widget that handles auth state and routes to appropriate screen
 class AuthWrapper extends StatelessWidget {
@@ -20,7 +20,7 @@ class AuthWrapper extends StatelessWidget {
             return const _SplashScreen();
 
           case AuthState.authenticated:
-            return const HomeScreen();
+            return const MainNavigationPage();
 
           case AuthState.needsVerification:
             return const VerifyEmailScreen();
@@ -30,7 +30,6 @@ class AuthWrapper extends StatelessWidget {
 
           case AuthState.unauthenticated:
           case AuthState.error:
-          default:
             return const LoginScreen();
         }
       },

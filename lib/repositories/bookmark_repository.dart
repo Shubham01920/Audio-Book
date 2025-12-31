@@ -47,6 +47,18 @@ class BookmarkRepository {
     }
   }
 
+  /// Check if a book has any bookmarks
+  Future<bool> hasBookmarksForBook(String userId, String bookId) async {
+    try {
+      final snapshot = await _getUserBookmarks(
+        userId,
+      ).where('bookId', isEqualTo: bookId).limit(1).get();
+      return snapshot.docs.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Get bookmarks for a specific episode
   Future<List<Bookmark>> getBookmarksForEpisode(
     String userId,

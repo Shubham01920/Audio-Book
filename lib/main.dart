@@ -1,4 +1,5 @@
 import 'package:audiobooks/core/theme/app_theme.dart';
+import 'package:audiobooks/core/theme/theme_provider.dart';
 import 'package:audiobooks/features/player/provider/player_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -57,7 +58,12 @@ class AudiobooksApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Auth service (must be first for auth-dependent services)
+        // Theme provider (must be first for app-wide theming)
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (_) => ThemeProvider()..init(),
+        ),
+
+        // Auth service
         ChangeNotifierProvider<AuthService>.value(value: authService),
 
         // Repositories (stateless, can be created fresh)
@@ -72,13 +78,17 @@ class AudiobooksApp extends StatelessWidget {
         // Player provider
         ChangeNotifierProvider<PlayerProvider>(create: (_) => PlayerProvider()),
       ],
-      child: MaterialApp(
-        title: 'Audiobooks',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark,
-        home: const AuthWrapper(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'Audiobooks',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.flutterThemeMode,
+            home: const AuthWrapper(),
+          );
+        },
       ),
     );
   }

@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/theme/theme_provider.dart';
 import '../services/auth_service.dart';
 import '../services/download_manager.dart';
+import '../services/coin_service.dart';
 import '../features/auth/screens/two_factor_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -14,18 +17,19 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
         elevation: 0,
         title: Text(
           'Profile',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.textPrimaryDark,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimaryDark),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -40,7 +44,15 @@ class ProfileScreen extends StatelessWidget {
                 // Profile header
                 FadeInDown(child: _ProfileHeader(user: user)),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+
+                // 🌟 Premium Subscription Card
+                FadeInUp(
+                  delay: const Duration(milliseconds: 50),
+                  child: _PremiumSubscriptionCard(user: user),
+                ),
+
+                const SizedBox(height: 24),
 
                 // Settings sections
                 FadeInUp(
@@ -119,6 +131,29 @@ class ProfileScreen extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
+                // 🎨 Appearance Section with Theme Toggle
+                FadeInUp(
+                  delay: const Duration(milliseconds: 250),
+                  child: Consumer<ThemeProvider>(
+                    builder: (context, themeProvider, _) {
+                      return _SettingsSection(
+                        title: 'Appearance',
+                        items: [
+                          _SettingsItem(
+                            icon: themeProvider.themeModeIcon,
+                            title: 'Theme',
+                            subtitle:
+                                '${themeProvider.themeModeDisplayName} - Tap to change',
+                            onTap: () => themeProvider.cycleThemeMode(),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
                 FadeInUp(
                   delay: const Duration(milliseconds: 300),
                   child: _SettingsSection(
@@ -162,6 +197,11 @@ class ProfileScreen extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        textStyle: const TextStyle(
+                          inherit: false,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
@@ -198,7 +238,7 @@ class ProfileScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Sign Out',
-          style: TextStyle(color: AppColors.textPrimaryDark),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           'Are you sure you want to sign out?',
@@ -274,7 +314,7 @@ class ProfileScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Clear Downloads',
-          style: TextStyle(color: AppColors.textPrimaryDark),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           'This will delete all downloaded episodes. You can re-download them later.',
@@ -316,7 +356,7 @@ class ProfileScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Enable 2-Factor Auth',
-          style: TextStyle(color: AppColors.textPrimaryDark),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -329,7 +369,7 @@ class ProfileScreen extends StatelessWidget {
             TextField(
               controller: phoneController,
               keyboardType: TextInputType.phone,
-              style: TextStyle(color: AppColors.textPrimaryDark),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: '+91 9876543210',
                 hintStyle: TextStyle(color: AppColors.textTertiaryDark),
@@ -386,7 +426,7 @@ class ProfileScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Disable 2-Factor Auth',
-          style: TextStyle(color: AppColors.textPrimaryDark),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           'This will make your account less secure. Are you sure?',
@@ -421,7 +461,7 @@ class ProfileScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Change Password',
-          style: TextStyle(color: AppColors.textPrimaryDark),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           'We will send a password reset link to your email.',
@@ -481,10 +521,10 @@ class _ProfileHeader extends StatelessWidget {
                   child: CachedNetworkImage(
                     imageUrl: user!.photoUrl!,
                     fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _buildDefaultAvatar(),
+                    errorWidget: (_, __, ___) => _buildDefaultAvatar(context),
                   ),
                 )
-              : _buildDefaultAvatar(),
+              : _buildDefaultAvatar(context),
         ),
         const SizedBox(height: 16),
 
@@ -492,7 +532,7 @@ class _ProfileHeader extends StatelessWidget {
         Text(
           user?.displayName ?? 'User',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.textPrimaryDark,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 4),
@@ -512,7 +552,7 @@ class _ProfileHeader extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.elevatedDark,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -521,13 +561,13 @@ class _ProfileHeader extends StatelessWidget {
                   Icon(
                     _getProviderIcon(user!.authProvider!),
                     size: 14,
-                    color: AppColors.textSecondaryDark,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     _getProviderLabel(user!.authProvider!),
                     style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.textSecondaryDark,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -538,11 +578,13 @@ class _ProfileHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildDefaultAvatar() {
+  Widget _buildDefaultAvatar(BuildContext context) {
     return Center(
       child: Text(
         (user?.displayName?.substring(0, 1) ?? 'U').toUpperCase(),
-        style: AppTypography.headlineLarge.copyWith(color: Colors.white),
+        style: AppTypography.headlineLarge.copyWith(
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
       ),
     );
   }
@@ -586,13 +628,13 @@ class _SettingsSection extends StatelessWidget {
           child: Text(
             title,
             style: AppTypography.labelLarge.copyWith(
-              color: AppColors.textTertiaryDark,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.cardDark,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -605,7 +647,7 @@ class _SettingsSection extends StatelessWidget {
                   if (index < items.length - 1)
                     Divider(
                       height: 1,
-                      color: AppColors.elevatedDark,
+                      color: Theme.of(context).dividerColor,
                       indent: 56,
                     ),
                 ],
@@ -648,7 +690,7 @@ class _SettingsItem extends StatelessWidget {
       title: Text(
         title,
         style: AppTypography.bodyLarge.copyWith(
-          color: titleColor ?? AppColors.textPrimaryDark,
+          color: titleColor ?? Theme.of(context).colorScheme.onSurface,
         ),
       ),
       subtitle: subtitle != null
@@ -661,6 +703,257 @@ class _SettingsItem extends StatelessWidget {
           : null,
       trailing: Icon(Icons.chevron_right, color: AppColors.textTertiaryDark),
       onTap: onTap,
+    );
+  }
+}
+
+/// Premium Subscription Card Widget
+class _PremiumSubscriptionCard extends StatelessWidget {
+  final AppUser? user;
+
+  // Pricing constants
+  static const int subscriptionPrice = 149;
+  static const int coinsEquivalent = 300;
+
+  const _PremiumSubscriptionCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final userId = user?.uid;
+    final isPremium = user?.hasPremiumAccess ?? false;
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: userId != null ? CoinService().getUserStream(userId) : null,
+      builder: (context, snapshot) {
+        final coins = CoinService.getCoinsFromSnapshot(snapshot.data);
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isPremium
+                  ? [Colors.green.shade800, Colors.green.shade600]
+                  : [
+                      AppColors.primary.withValues(alpha: 0.8),
+                      AppColors.primary,
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      isPremium ? Icons.verified : Icons.star,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isPremium ? 'Premium Active' : 'Go Premium',
+                          style: AppTypography.titleLarge.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          isPremium
+                              ? 'Unlimited access to all episodes'
+                              : 'Unlock all episodes for ₹$subscriptionPrice/mo',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // Coin Balance
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.monetization_on,
+                      color: Colors.amber,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '$coins Coins',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '≈ ₹${(coins * subscriptionPrice / coinsEquivalent).toStringAsFixed(0)}',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (!isPremium) ...[
+                const SizedBox(height: 16),
+
+                // Subscribe Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => _showPremiumDialog(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Subscribe Now',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPremiumDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.elevatedDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.star, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Premium Plan',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withValues(alpha: 0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '₹$subscriptionPrice/month',
+                style: AppTypography.headlineMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildBenefit('Unlock ALL episodes'),
+            _buildBenefit('No ads'),
+            _buildBenefit('Offline downloads'),
+            _buildBenefit('Early access to new books'),
+            _buildBenefit('Equivalent to $coinsEquivalent coins'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: RevenueCat integration
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🚀 Payment via RevenueCat coming soon!'),
+                  backgroundColor: AppColors.primary,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Subscribe'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBenefit(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: AppColors.textSecondaryDark),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

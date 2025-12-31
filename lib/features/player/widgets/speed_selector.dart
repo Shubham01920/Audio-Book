@@ -3,14 +3,14 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
 
-/// Speed selector bottom sheet
-class SpeedSelector extends StatelessWidget {
-  final double currentSpeed;
+/// Speed selector bottom sheet - StatefulWidget for live slider updates
+class SpeedSelector extends StatefulWidget {
+  final double initialSpeed;
   final ValueChanged<double> onSpeedChanged;
 
   const SpeedSelector({
     super.key,
-    required this.currentSpeed,
+    required this.initialSpeed,
     required this.onSpeedChanged,
   });
 
@@ -25,6 +25,39 @@ class SpeedSelector extends StatelessWidget {
     2.5,
     3.0,
   ];
+
+  @override
+  State<SpeedSelector> createState() => _SpeedSelectorState();
+
+  static void show(
+    BuildContext context,
+    double currentSpeed,
+    ValueChanged<double> onChanged,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) =>
+          SpeedSelector(initialSpeed: currentSpeed, onSpeedChanged: onChanged),
+    );
+  }
+}
+
+class _SpeedSelectorState extends State<SpeedSelector> {
+  late double _currentSpeed;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSpeed = widget.initialSpeed;
+  }
+
+  void _updateSpeed(double speed) {
+    setState(() {
+      _currentSpeed = speed;
+    });
+    widget.onSpeedChanged(speed);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +92,7 @@ class SpeedSelector extends StatelessWidget {
 
           // Current speed display
           Text(
-            '${currentSpeed.toStringAsFixed(1)}x',
+            '${_currentSpeed.toStringAsFixed(2)}x',
             style: AppTypography.displaySmall.copyWith(
               color: AppColors.primary,
               fontWeight: FontWeight.bold,
@@ -67,26 +100,26 @@ class SpeedSelector extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Slider
+          // Slider - now works because we're StatefulWidget
           SliderTheme(
             data: SliderThemeData(
               activeTrackColor: AppColors.primary,
               inactiveTrackColor: AppColors.progressInactive,
               thumbColor: AppColors.primary,
-              overlayColor: AppColors.primary.withOpacity(0.2),
+              overlayColor: AppColors.primary.withValues(alpha: 0.2),
               trackHeight: 6,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
             ),
             child: Slider(
-              value: currentSpeed,
+              value: _currentSpeed,
               min: AppConstants.minPlaybackSpeed,
               max: AppConstants.maxPlaybackSpeed,
               divisions:
                   ((AppConstants.maxPlaybackSpeed -
                               AppConstants.minPlaybackSpeed) /
-                          AppConstants.speedIncrement)
+                          0.05)
                       .round(),
-              onChanged: onSpeedChanged,
+              onChanged: _updateSpeed,
             ),
           ),
 
@@ -118,34 +151,17 @@ class SpeedSelector extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             alignment: WrapAlignment.center,
-            children: presets.map((speed) {
-              final isSelected = (currentSpeed - speed).abs() < 0.05;
+            children: SpeedSelector.presets.map((speed) {
+              final isSelected = (_currentSpeed - speed).abs() < 0.05;
               return _SpeedChip(
                 speed: speed,
                 isSelected: isSelected,
-                onTap: () => onSpeedChanged(speed),
+                onTap: () => _updateSpeed(speed),
               );
             }).toList(),
           ),
           const SizedBox(height: 16),
         ],
-      ),
-    );
-  }
-
-  static void show(
-    BuildContext context,
-    double currentSpeed,
-    ValueChanged<double> onChanged,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SpeedSelector(
-        currentSpeed: currentSpeed,
-        onSpeedChanged: (speed) {
-          onChanged(speed);
-        },
       ),
     );
   }

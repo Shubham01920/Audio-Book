@@ -6,10 +6,12 @@ Future<AudioHandler> initAudioService() async {
   return await AudioService.init(
     builder: () => MyAudioHandler(),
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.myapp.audio',
+      androidNotificationChannelId: 'com.audiobooks.player',
       androidNotificationChannelName: 'Audiobook Player',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,
+      // Android Auto specific
+      androidNotificationIcon: 'mipmap/ic_launcher',
     ),
   );
 }
@@ -63,21 +65,50 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   @override
   Future<void> skipToPrevious() => _player.seekToPrevious();
 
+  // Android Auto / Car Controls - 30 second skip
+  @override
+  Future<void> fastForward() async {
+    final newPosition = _player.position + const Duration(seconds: 30);
+    final duration = _player.duration ?? Duration.zero;
+    if (newPosition < duration) {
+      await _player.seek(newPosition);
+    } else {
+      await _player.seek(duration);
+    }
+  }
+
+  @override
+  Future<void> rewind() async {
+    final newPosition = _player.position - const Duration(seconds: 30);
+    await _player.seek(
+      newPosition > Duration.zero ? newPosition : Duration.zero,
+    );
+  }
+
+  @override
+  Future<void> setSpeed(double speed) => _player.setSpeed(speed);
+
   // --- Helper to Map States ---
   PlaybackState _transformEvent(PlaybackEvent event) {
     return PlaybackState(
       controls: [
         MediaControl.skipToPrevious,
+        MediaControl.rewind, // 30s back for Android Auto
         if (_player.playing) MediaControl.pause else MediaControl.play,
-        MediaControl.stop,
+        MediaControl.fastForward, // 30s forward for Android Auto
         MediaControl.skipToNext,
       ],
       systemActions: const {
         MediaAction.seek,
         MediaAction.seekForward,
         MediaAction.seekBackward,
+        MediaAction.setSpeed, // Speed control for Android Auto
       },
-      androidCompactActionIndices: const [0, 1, 3],
+      androidCompactActionIndices: const [
+        1,
+        2,
+        3,
+      ], // Rewind, Play/Pause, FastForward
       processingState: const {
         ProcessingState.idle: AudioProcessingState.idle,
         ProcessingState.loading: AudioProcessingState.loading,

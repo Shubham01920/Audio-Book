@@ -4,11 +4,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../services/auth_service.dart';
+import '../../../repositories/bookmark_repository.dart';
 import '../provider/player_provider.dart';
 import '../provider/player_state.dart';
 import 'progress_bar.dart';
 import 'speed_selector.dart';
 import 'sleep_timer_sheet.dart';
+import 'car_mode_player.dart';
 
 /// Full-screen audio player
 class FullPlayer extends StatelessWidget {
@@ -127,6 +130,13 @@ class FullPlayer extends StatelessWidget {
               ),
             ),
           const SizedBox(width: 8),
+          // Car Mode Button
+          IconButton(
+            icon: const Icon(Icons.directions_car),
+            color: AppColors.textPrimaryDark,
+            tooltip: 'Car Mode',
+            onPressed: () => CarModePlayer.show(context),
+          ),
           IconButton(
             icon: const Icon(Icons.more_vert),
             color: AppColors.textPrimaryDark,
@@ -282,7 +292,7 @@ class FullPlayer extends StatelessWidget {
     PlayerState state,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -317,6 +327,13 @@ class FullPlayer extends StatelessWidget {
             },
           ),
 
+          // Bookmark - shows options sheet
+          _SecondaryButton(
+            icon: Icons.bookmark_add_outlined,
+            label: 'Bookmark',
+            onTap: () => _showBookmarkSheet(context, state),
+          ),
+
           // Repeat
           _SecondaryButton(
             icon: _getLoopIcon(state.loopMode),
@@ -324,18 +341,290 @@ class FullPlayer extends StatelessWidget {
             isActive: state.loopMode != LoopMode.off,
             onTap: () => player.cycleLoopMode(),
           ),
-
-          // Chapters
-          _SecondaryButton(
-            icon: Icons.list,
-            label: 'Chapters',
-            onTap: () {
-              // TODO: Show chapters list
-            },
-          ),
         ],
       ),
     );
+  }
+
+  void _showBookmarkSheet(BuildContext context, PlayerState state) {
+    if (state.currentBook == null || state.currentEpisode == null) return;
+
+    final authService = context.read<AuthService>();
+    final bookmarkRepo = context.read<BookmarkRepository>();
+
+    if (authService.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login to use bookmarks')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.elevatedDark,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.bookmark, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Bookmarks',
+                  style: AppTypography.titleLarge.copyWith(
+                    color: AppColors.textPrimaryDark,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Current position
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Current: ${_formatDuration(state.position)}',
+                style: AppTypography.labelLarge.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Save bookmark option
+            ListTile(
+              leading: const Icon(Icons.bookmark_add, color: AppColors.success),
+              title: Text(
+                'Save Bookmark Here',
+                style: TextStyle(color: AppColors.textPrimaryDark),
+              ),
+              subtitle: Text(
+                'At ${_formatDuration(state.position)}',
+                style: TextStyle(color: AppColors.textTertiaryDark),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                final bookmark = await bookmarkRepo.quickBookmark(
+                  userId: authService.currentUser!.uid,
+                  bookId: state.currentBook!.id,
+                  episodeId: state.currentEpisode!.id,
+                  position: state.position,
+                );
+                if (bookmark != null && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Bookmark saved at ${_formatDuration(state.position)}',
+                      ),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+            ),
+
+            const Divider(color: AppColors.elevatedDark),
+
+            // View all bookmarks
+            ListTile(
+              leading: const Icon(Icons.list, color: AppColors.primary),
+              title: Text(
+                'View All Bookmarks',
+                style: TextStyle(color: AppColors.textPrimaryDark),
+              ),
+              subtitle: Text(
+                'See all saved positions',
+                style: TextStyle(color: AppColors.textTertiaryDark),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showBookmarksList(
+                  context,
+                  state,
+                  authService.currentUser!.uid,
+                  bookmarkRepo,
+                );
+              },
+            ),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showBookmarksList(
+    BuildContext context,
+    PlayerState state,
+    String userId,
+    BookmarkRepository bookmarkRepo,
+  ) async {
+    final bookmarks = await bookmarkRepo.getBookmarksForBook(
+      userId,
+      state.currentBook!.id,
+    );
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.elevatedDark,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Text(
+              'Saved Bookmarks (${bookmarks.length})',
+              style: AppTypography.titleLarge.copyWith(
+                color: AppColors.textPrimaryDark,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            if (bookmarks.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.bookmark_border,
+                      size: 48,
+                      color: AppColors.textTertiaryDark,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No bookmarks yet',
+                      style: TextStyle(color: AppColors.textSecondaryDark),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: bookmarks.length,
+                  itemBuilder: (context, index) {
+                    final bookmark = bookmarks[index];
+                    return ListTile(
+                      leading: const Icon(
+                        Icons.bookmark,
+                        color: AppColors.primary,
+                      ),
+                      title: Text(
+                        bookmark.title ?? 'Bookmark ${index + 1}',
+                        style: TextStyle(color: AppColors.textPrimaryDark),
+                      ),
+                      subtitle: Text(
+                        _formatDuration(bookmark.position),
+                        style: TextStyle(color: AppColors.textTertiaryDark),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Jump to position
+                          IconButton(
+                            icon: const Icon(
+                              Icons.play_circle,
+                              color: AppColors.primary,
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              context.read<PlayerProvider>().seek(
+                                bookmark.position,
+                              );
+                            },
+                          ),
+                          // Delete
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: AppColors.error,
+                            ),
+                            onPressed: () async {
+                              await bookmarkRepo.deleteBookmark(
+                                userId,
+                                bookmark.id,
+                              );
+                              Navigator.pop(context);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Bookmark deleted'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    if (hours > 0) {
+      return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
+    }
+    return '${twoDigits(minutes)}:${twoDigits(seconds)}';
   }
 
   IconData _getLoopIcon(LoopMode mode) {

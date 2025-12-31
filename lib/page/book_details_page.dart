@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/book_model.dart';
 import '../models/episode_model.dart';
 import '../core/theme/app_colors.dart';
@@ -9,7 +10,11 @@ import '../core/theme/app_typography.dart';
 import '../features/player/provider/player_provider.dart';
 import '../features/player/widgets/widgets.dart';
 import '../repositories/book_repository.dart';
+import '../repositories/bookmark_repository.dart';
 import '../services/download_manager.dart';
+import '../services/auth_service.dart';
+import '../services/coin_service.dart';
+import '../features/premium/paywall_sheet.dart';
 
 class BookDetailsScreen extends StatefulWidget {
   final String bookId;
@@ -47,10 +52,21 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     }
   }
 
+  /// Get bookmarks count for this book from Firestore
+  Future<int> _getBookmarksCount(String bookId) async {
+    final authService = context.read<AuthService>();
+    final userId = authService.currentUser?.uid;
+    if (userId == null) return 0;
+
+    final bookmarkRepo = BookmarkRepository();
+    final bookmarks = await bookmarkRepo.getBookmarksForBook(userId, bookId);
+    return bookmarks.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           CustomScrollView(
@@ -98,7 +114,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     return SliverAppBar(
       expandedHeight: 300,
       pinned: true,
-      backgroundColor: AppColors.backgroundDark,
+      
       leading: IconButton(
         icon: Container(
           padding: const EdgeInsets.all(8),
@@ -291,6 +307,50 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 8),
+
+          // Audio Bookmarks indicator
+          FutureBuilder<int>(
+            future: _getBookmarksCount(book.id),
+            builder: (context, snapshot) {
+              if (snapshot.hasData && snapshot.data! > 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.bookmark,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${snapshot.data} bookmark${snapshot.data! > 1 ? 's' : ''} saved',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
           ),
           const SizedBox(height: 24),
 
@@ -588,6 +648,9 @@ class _EpisodeListTile extends StatelessWidget {
   final List<Episode> allEpisodes;
   final int index;
 
+  // First 2 episodes are always free
+  static const int freeEpisodeCount = 2;
+
   const _EpisodeListTile({
     required this.episode,
     required this.book,
@@ -595,126 +658,220 @@ class _EpisodeListTile extends StatelessWidget {
     required this.index,
   });
 
+  /// Check if episode is locked using the unlocked list from stream
+  bool _isLocked(List<dynamic> unlockedList, bool isPremium) {
+    // First 2 episodes always free
+    if (index < freeEpisodeCount) return false;
+
+    // Episode marked as free in database
+    if (episode.isFree) return false;
+
+    // User has premium
+    if (isPremium) return false;
+
+    // Check if unlocked with coins using bookId_index format
+    if (book != null &&
+        CoinService.isEpisodeUnlocked(unlockedList, book!.id, index)) {
+      return false;
+    }
+
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final downloadManager = context.watch<DownloadManager>();
+    final authService = context.watch<AuthService>();
+    final user = authService.currentUser;
+    final userId = user?.uid;
+
     final isDownloaded = downloadManager.isDownloaded(episode.id);
     final downloadProgress = downloadManager.getDownloadProgress(episode.id);
     final isDownloading = downloadManager.isDownloading(episode.id);
 
-    return Consumer<PlayerProvider>(
-      builder: (context, player, child) {
-        final state = player.state;
-        final isPlaying =
-            state.currentEpisode?.id == episode.id && state.isPlaying;
-        final isCurrent = state.currentEpisode?.id == episode.id;
+    // Wrap in StreamBuilder for real-time updates
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: userId != null ? CoinService().getUserStream(userId) : null,
+      builder: (context, snapshot) {
+        // Get current coins and unlocked episodes from stream
+        final currentCoins = CoinService.getCoinsFromSnapshot(snapshot.data);
+        final unlockedList = CoinService.getUnlockedFromSnapshot(snapshot.data);
+        final isPremium = user?.hasPremiumAccess ?? false;
+        final isLocked = _isLocked(unlockedList, isPremium);
 
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 4,
-          ),
-          tileColor: isCurrent ? AppColors.primary.withOpacity(0.1) : null,
-          leading: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: isCurrent ? AppColors.primary : AppColors.cardDark,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: isPlaying
-                      ? const Icon(
-                          Icons.graphic_eq,
-                          color: Colors.white,
-                          size: 22,
-                        )
-                      : Text(
-                          '${index + 1}',
-                          style: AppTypography.titleMedium.copyWith(
-                            color: isCurrent
-                                ? Colors.white
-                                : AppColors.textSecondaryDark,
-                          ),
+        return Consumer<PlayerProvider>(
+          builder: (context, player, child) {
+            final state = player.state;
+            final isPlaying =
+                state.currentEpisode?.id == episode.id && state.isPlaying;
+            final isCurrent = state.currentEpisode?.id == episode.id;
+
+            return ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 4,
+              ),
+              tileColor: isCurrent ? AppColors.primary.withOpacity(0.1) : null,
+              leading: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      // Locked episodes get gold/amber color
+                      color: isLocked
+                          ? Colors.amber.shade800
+                          : isCurrent
+                          ? AppColors.primary
+                          : AppColors.cardDark,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: isLocked
+                          ? const Icon(
+                              Icons.lock,
+                              color: Colors.white,
+                              size: 20,
+                            )
+                          : isPlaying
+                          ? const Icon(
+                              Icons.graphic_eq,
+                              color: Colors.white,
+                              size: 22,
+                            )
+                          : Text(
+                              '${index + 1}',
+                              style: AppTypography.titleMedium.copyWith(
+                                color: isCurrent
+                                    ? Colors.white
+                                    : AppColors.textSecondaryDark,
+                              ),
+                            ),
+                    ),
+                  ),
+                  if (isDownloading && !isLocked)
+                    SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: CircularProgressIndicator(
+                        value: downloadProgress,
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                ],
+              ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      episode.title,
+                      style: AppTypography.titleSmall.copyWith(
+                        color: isLocked
+                            ? AppColors.textTertiaryDark
+                            : isCurrent
+                            ? AppColors.primary
+                            : AppColors.textPrimaryDark,
+                        fontWeight: isCurrent
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (isDownloaded && !isLocked)
+                    const Icon(
+                      Icons.download_done,
+                      size: 16,
+                      color: AppColors.success,
+                    ),
+                  if (isLocked)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      margin: const EdgeInsets.only(left: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${CoinService.episodeUnlockCost}🪙',
+                        style: const TextStyle(
+                          color: Colors.amber,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+                ],
+              ),
+              subtitle: Text(
+                episode.formattedDuration,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondaryDark,
                 ),
               ),
-              if (isDownloading)
-                SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: CircularProgressIndicator(
-                    value: downloadProgress,
-                    strokeWidth: 2,
-                    color: AppColors.primary,
-                  ),
+              trailing: IconButton(
+                icon: Icon(
+                  isLocked
+                      ? Icons.lock_open
+                      : isCurrent
+                      ? (isPlaying ? Icons.pause_circle : Icons.play_circle)
+                      : Icons.play_circle_outline,
+                  color: isLocked
+                      ? Colors.amber
+                      : isCurrent
+                      ? AppColors.primary
+                      : AppColors.textSecondaryDark,
                 ),
-            ],
-          ),
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  episode.title,
-                  style: AppTypography.titleSmall.copyWith(
-                    color: isCurrent
-                        ? AppColors.primary
-                        : AppColors.textPrimaryDark,
-                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                  ),
-                ),
+                iconSize: 36,
+                onPressed: () =>
+                    _onTap(context, player, isLocked, currentCoins),
               ),
-              if (isDownloaded)
-                const Icon(
-                  Icons.download_done,
-                  size: 16,
-                  color: AppColors.success,
-                ),
-            ],
-          ),
-          subtitle: Text(
-            episode.formattedDuration,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondaryDark,
-            ),
-          ),
-          trailing: IconButton(
-            icon: Icon(
-              isCurrent
-                  ? (isPlaying ? Icons.pause_circle : Icons.play_circle)
-                  : Icons.play_circle_outline,
-              color: isCurrent
-                  ? AppColors.primary
-                  : AppColors.textSecondaryDark,
-            ),
-            iconSize: 36,
-            onPressed: () {
-              if (book == null) return;
-
-              if (isCurrent) {
-                player.togglePlayPause();
-              } else {
-                player.loadBook(
-                  book: book!,
-                  episodes: allEpisodes,
-                  startIndex: index,
-                );
-              }
-            },
-          ),
-          onTap: () {
-            if (book == null) return;
-            player.loadBook(
-              book: book!,
-              episodes: allEpisodes,
-              startIndex: index,
+              onTap: () => _onTap(context, player, isLocked, currentCoins),
             );
           },
         );
       },
     );
+  }
+
+  void _onTap(
+    BuildContext context,
+    PlayerProvider player,
+    bool isLocked,
+    int currentCoins,
+  ) {
+    if (book == null) return;
+
+    if (isLocked) {
+      // Show paywall with current coin balance
+      PaywallSheet.show(
+        context,
+        episode: episode,
+        episodeIndex: index,
+        currentCoins: currentCoins,
+        onUnlocked: () {
+          // Play the episode after unlock
+          player.loadBook(
+            book: book!,
+            episodes: allEpisodes,
+            startIndex: index,
+          );
+        },
+      );
+    } else {
+      // Play normally
+      final state = player.state;
+      final isCurrent = state.currentEpisode?.id == episode.id;
+
+      if (isCurrent) {
+        player.togglePlayPause();
+      } else {
+        player.loadBook(book: book!, episodes: allEpisodes, startIndex: index);
+      }
+    }
   }
 }
