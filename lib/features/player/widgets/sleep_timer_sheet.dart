@@ -116,7 +116,7 @@ class SleepTimerSheet extends StatelessWidget {
                   Navigator.pop(context);
                 },
               );
-            }),
+            }).toList(),
 
             _TimerOption(
               label: 'End of chapter',
@@ -166,8 +166,8 @@ class _TimerOption extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.isSelected,
-    this.isDestructive = false,
     required this.onTap,
+    this.isDestructive = false,
   });
 
   @override
@@ -184,7 +184,7 @@ class _TimerOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.1) : null,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : null,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(

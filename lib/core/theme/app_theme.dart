@@ -69,7 +69,7 @@ class AppTheme {
       activeTrackColor: AppColors.primary,
       inactiveTrackColor: AppColors.progressInactive,
       thumbColor: AppColors.primary,
-      overlayColor: AppColors.primary.withOpacity(0.2),
+      overlayColor: AppColors.primary.withValues(alpha: 0.2),
       trackHeight: 4,
       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
     ),
@@ -80,7 +80,7 @@ class AppTheme {
       ),
     ),
     dividerTheme: DividerThemeData(
-      color: AppColors.elevatedDark.withOpacity(0.5),
+      color: AppColors.elevatedDark.withValues(alpha: 0.5),
       thickness: 1,
     ),
     listTileTheme: const ListTileThemeData(
@@ -140,7 +140,7 @@ class AppTheme {
       activeTrackColor: AppColors.primary,
       inactiveTrackColor: AppColors.elevatedLight,
       thumbColor: AppColors.primary,
-      overlayColor: AppColors.primary.withOpacity(0.2),
+      overlayColor: AppColors.primary.withValues(alpha: 0.2),
       trackHeight: 4,
       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
     ),
@@ -151,7 +151,7 @@ class AppTheme {
       ),
     ),
     dividerTheme: DividerThemeData(
-      color: AppColors.elevatedLight.withOpacity(0.5),
+      color: AppColors.elevatedLight.withValues(alpha: 0.5),
       thickness: 1,
     ),
     listTileTheme: const ListTileThemeData(

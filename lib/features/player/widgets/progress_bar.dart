@@ -145,7 +145,9 @@ class _PlayerProgressBarState extends State<PlayerProgressBar> {
                             boxShadow: _isDragging
                                 ? [
                                     BoxShadow(
-                                      color: AppColors.primary.withOpacity(0.3),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       blurRadius: 8,
                                       spreadRadius: 2,
                                     ),

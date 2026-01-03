@@ -8,7 +8,7 @@ import '../core/theme/app_typography.dart';
 import '../features/player/provider/player_provider.dart';
 import '../repositories/book_repository.dart';
 import 'book_details_page.dart';
-import 'profile_screen.dart';
+import '../screens/profile_screen.dart';
 import 'search_screen.dart';
 import '../presentation/screens/admin/admin_dashboard.dart';
 import '../services/auth_service.dart';
@@ -339,7 +339,7 @@ class _BookCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),

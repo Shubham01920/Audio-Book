@@ -66,7 +66,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           CustomScrollView(
@@ -114,12 +113,12 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     return SliverAppBar(
       expandedHeight: 300,
       pinned: true,
-      
+
       leading: IconButton(
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.arrow_back, color: Colors.white),
@@ -131,7 +130,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -154,7 +153,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.share, color: Colors.white),
@@ -174,7 +173,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
               CachedNetworkImage(
                 imageUrl: _book!.coverUrl,
                 fit: BoxFit.cover,
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 colorBlendMode: BlendMode.darken,
               ),
 
@@ -186,7 +185,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    AppColors.backgroundDark.withOpacity(0.8),
+                    AppColors.backgroundDark.withValues(alpha: 0.8),
                     AppColors.backgroundDark,
                   ],
                   stops: const [0.3, 0.7, 1.0],
@@ -209,7 +208,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
+                          color: AppColors.primary.withValues(alpha: 0.3),
                           blurRadius: 30,
                           offset: const Offset(0, 15),
                         ),
@@ -546,7 +545,7 @@ class _PlayBookButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.4),
+                      color: AppColors.primary.withValues(alpha: 0.4),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -711,7 +710,9 @@ class _EpisodeListTile extends StatelessWidget {
                 horizontal: 20,
                 vertical: 4,
               ),
-              tileColor: isCurrent ? AppColors.primary.withOpacity(0.1) : null,
+              tileColor: isCurrent
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : null,
               leading: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -793,7 +794,7 @@ class _EpisodeListTile extends StatelessWidget {
                       ),
                       margin: const EdgeInsets.only(left: 8),
                       decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.2),
+                        color: Colors.amber.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

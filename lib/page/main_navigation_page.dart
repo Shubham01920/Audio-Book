@@ -8,7 +8,7 @@ import '../features/player/widgets/mini_player.dart';
 import 'home_page.dart';
 import 'discover_page.dart';
 import 'search_screen.dart';
-import 'profile_screen.dart';
+import '../screens/profile_screen.dart';
 
 /// Main navigation wrapper with premium animated bottom nav
 class MainNavigationPage extends StatefulWidget {

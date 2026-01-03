@@ -1,6 +1,7 @@
 import 'package:audiobooks/core/theme/app_theme.dart';
 import 'package:audiobooks/core/theme/theme_provider.dart';
 import 'package:audiobooks/features/player/provider/player_provider.dart';
+import 'package:audiobooks/provider/community_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -77,6 +78,11 @@ class AudiobooksApp extends StatelessWidget {
 
         // Player provider
         ChangeNotifierProvider<PlayerProvider>(create: (_) => PlayerProvider()),
+
+        // Community provider
+        ChangeNotifierProvider<CommunityProvider>(
+          create: (_) => CommunityProvider(),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
